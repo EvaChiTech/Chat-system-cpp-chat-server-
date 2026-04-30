@@ -1,0 +1,35 @@
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: chat_system
+      MYSQL_USER: chat
+      MYSQL_PASSWORD: chatpass
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-uroot", "-prootpass"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  chat:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "9000:9000"
+    environment:
+      # Each KEY here overrides config/server.conf at startup.
+      MYSQL_HOST: mysql
+      MYSQL_USER: chat
+      MYSQL_PASSWORD: chatpass
+      MYSQL_DATABASE: chat_system
+
+volumes:
+  mysql_data:

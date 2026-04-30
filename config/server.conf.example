@@ -1,0 +1,29 @@
+# chat_server config — copy to server.conf and edit.
+# Lines starting with # and blank lines are ignored. KEY = VALUE.
+
+# Listening socket
+listen_host = 0.0.0.0
+listen_port = 9000
+
+# Worker thread pool — defaults to hardware_concurrency() if 0
+worker_threads = 0
+
+# Logging
+log_level = info        # trace | debug | info | warn | error
+log_file  =             # empty = stderr
+
+# MySQL
+mysql_host     = 127.0.0.1
+mysql_port     = 3306
+mysql_user     = chat
+mysql_password = chatpass
+mysql_database = chat_system
+mysql_pool_size = 8
+
+# Auth
+session_ttl_seconds = 604800   # 7 days
+pbkdf2_iterations   = 120000
+
+# Limits
+max_message_bytes  = 4096
+max_frame_bytes    = 65536

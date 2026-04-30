@@ -1,0 +1,100 @@
+name: ci
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+# Don't queue runs for the same ref — newer push cancels older.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Linux build, in-memory store. Fast smoke test of the whole core.
+  linux-no-mysql:
+    name: Linux (no MySQL)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCHAT_NO_MYSQL=ON
+      - name: Build
+        run: cmake --build build -j
+      - name: Run unit tests
+        run: ./build/chat_tests
+      - name: End-to-end smoke test
+        shell: bash
+        run: |
+          ./build/chat_server --port 19010 > /tmp/srv.log 2>&1 &
+          PID=$!
+          sleep 0.5
+          python3 - <<'PY'
+          import socket, struct, json, time
+          def pack(d):
+              p=json.dumps(d).encode()
+              return struct.pack(">I",len(p))+p
+          def rf(s):
+              h=b''
+              while len(h)<4:
+                  b=s.recv(4-len(h))
+                  if not b: raise EOFError
+                  h+=b
+              n,=struct.unpack(">I",h); body=b''
+              while len(body)<n: body+=s.recv(n-len(body))
+              return json.loads(body)
+          def call(s,m,wid,bag=None):
+              s.sendall(pack(m))
+              while True:
+                  r=rf(s)
+                  if r.get("id")==wid: return r
+                  if bag is not None: bag.append(r)
+          s = socket.create_connection(("127.0.0.1",19010))
+          assert call(s,{"id":1,"type":"register","username":"ci","password":"pw1234"},1)["type"]=="ack"
+          assert call(s,{"id":2,"type":"login","username":"ci","password":"pw1234"},2)["type"]=="ack"
+          p = call(s,{"id":3,"type":"ping"},3)
+          assert p["type"]=="pong", p
+          print("e2e ok")
+          PY
+          kill -INT $PID
+          wait || true
+
+  # Linux build with the real MySQL client lib linked in. Validates the SQL
+  # path compiles. (We don't run a MySQL server in CI; that's stress_test.py
+  # territory, run manually.)
+  linux-mysql:
+    name: Linux (with MySQL)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build libmysqlclient-dev
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build -j
+      - name: Run unit tests
+        run: ./build/chat_tests
+
+  # Windows build. Uses select() reactor since epoll isn't available.
+  # Always builds with -DCHAT_NO_MYSQL=ON because Connector/C isn't on the
+  # default runner image.
+  windows:
+    name: Windows (no MySQL)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCHAT_NO_MYSQL=ON
+      - name: Build
+        run: cmake --build build --config Release -j
+      - name: Run unit tests
+        shell: bash
+        run: ./build/Release/chat_tests.exe
