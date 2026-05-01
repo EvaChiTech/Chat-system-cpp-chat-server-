@@ -1,11 +1,8 @@
 # Scalable Real-Time Chat System (C++)
 
-[![ci](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/ci.yml)
+[![ci](https://github.com/EvaChiTech/Chat-system-cpp-chat-server-/actions/workflows/ci.yml/badge.svg)](https://github.com/EvaChiTech/Chat-system-cpp-chat-server-/actions/workflows/ci.yml)
 ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-
-> **Note:** replace `OWNER/REPO` in the badge URL above with your GitHub
-> `<user>/<repo>` once you push, so the badge points at *your* CI runs.
 
 A production-grade, low-latency chat backend in modern C++ (C++17). TCP/JSON wire
 protocol, epoll-based event loop on Linux (select fallback for Windows), thread
