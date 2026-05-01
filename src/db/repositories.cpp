@@ -31,6 +31,28 @@ std::string escape(MYSQL* c, const std::string& s) {
   return out;
 }
 
+// Parse a "YYYY-MM-DD hh:mm:ss[.fff]" timestamp into unix ms.
+std::int64_t parse_ts(const char* s) {
+  if (!s) return 0;
+  std::tm tm{};
+  int ms = 0;
+  // sscanf is fine here; values are server-controlled.
+  if (std::sscanf(s, "%d-%d-%d %d:%d:%d.%d",
+                  &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+                  &tm.tm_hour, &tm.tm_min, &tm.tm_sec, &ms) < 6) {
+    return 0;
+  }
+  tm.tm_year -= 1900;
+  tm.tm_mon  -= 1;
+#if defined(_WIN32)
+  std::time_t t = _mkgmtime(&tm);
+#else
+  std::time_t t = ::timegm(&tm);
+#endif
+  if (t < 0) return 0;
+  return static_cast<std::int64_t>(t) * 1000 + ms;
+}
+
 bool exec(MYSQL* c, const std::string& q) {
   if (::mysql_real_query(c, q.data(), static_cast<unsigned long>(q.size())) != 0) {
     LOG_ERROR("mysql query failed: " << ::mysql_error(c) << " | " << q);
