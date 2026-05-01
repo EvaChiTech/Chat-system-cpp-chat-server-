@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <cstdint>
 #include <string>
 #include <memory>
@@ -6,9 +6,13 @@
 #include <condition_variable>
 #include <queue>
 
+// Pull in libmysqlclient's full type definitions so this header composes
+// cleanly with any TU that also includes <mysql.h> directly. Some distros
+// (notably Ubuntu 22.04 / MySQL 8.0) define MYSQL as a different shape than
+// the historical `typedef struct st_mysql MYSQL`, so a forward declaration
+// here would conflict with mysql.h's own typedef.
 #if !defined(CHAT_NO_MYSQL)
-struct st_mysql;       // libmysqlclient forward
-typedef st_mysql MYSQL;
+#include <mysql.h>
 #endif
 
 namespace chat::db {
@@ -24,8 +28,6 @@ struct MysqlConfig {
 
 #if !defined(CHAT_NO_MYSQL)
 
-// Connection pool for libmysqlclient. Returns a movable Lease that releases
-// the connection back to the pool on destruction.
 class MysqlPool {
  public:
   class Lease {
@@ -70,7 +72,6 @@ class MysqlPool {
 
 #else
 
-// No-MySQL stub.
 class MysqlPool {
  public:
   class Lease { public: explicit operator bool() const { return false; } };
