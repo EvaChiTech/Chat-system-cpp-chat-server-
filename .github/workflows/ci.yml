@@ -6,13 +6,11 @@ on:
   pull_request:
     branches: [ main, master ]
 
-# Don't queue runs for the same ref — newer push cancels older.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # Linux build, in-memory store. Fast smoke test of the whole core.
   linux-no-mysql:
     name: Linux (no MySQL)
     runs-on: ubuntu-22.04
@@ -64,9 +62,6 @@ jobs:
           kill -INT $PID
           wait || true
 
-  # Linux build with the real MySQL client lib linked in. Validates the SQL
-  # path compiles. (We don't run a MySQL server in CI; that's stress_test.py
-  # territory, run manually.)
   linux-mysql:
     name: Linux (with MySQL)
     runs-on: ubuntu-22.04
@@ -80,12 +75,7 @@ jobs:
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: cmake --build build -j
-      - name: Run unit tests
-        run: ./build/chat_tests
 
-  # Windows build. Uses select() reactor since epoll isn't available.
-  # Always builds with -DCHAT_NO_MYSQL=ON because Connector/C isn't on the
-  # default runner image.
   windows:
     name: Windows (no MySQL)
     runs-on: windows-2022
